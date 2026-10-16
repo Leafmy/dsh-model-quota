@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: 单元测试（解析器 / 可见性 / 设置 / 路由，全部离线）
+        run: node --test tests/quota.test.mjs
+      - name: 宿主半入口可被 import（导出 apply / name）
+        run: node -e "import('./lib/host.js').then(m => { if (typeof m.apply !== 'function') throw new Error('missing apply'); if (m.name !== 'dsh-model-quota') throw new Error('bad name: ' + m.name); console.log('host entry ok') })"
+      - name: 客户端半语法检查
+        run: node --check lib/client.js

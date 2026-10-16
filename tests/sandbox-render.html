@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>dsh-model-quota 客户端半渲染沙盒</title>
+<style>
+  :root{
+    --dsw-alias-label-primary:#1f2329;
+    --dsw-alias-label-secondary:rgba(31,35,41,.65);
+    --dsw-alias-label-tertiary:rgba(31,35,41,.45);
+    --dsw-alias-bg-layer-2:rgba(31,35,41,.05);
+    --dsw-alias-bg-overlay:#ffffff;
+    --dsw-alias-border-l1:rgba(31,35,41,.08);
+    --dsw-alias-border-l2:rgba(31,35,41,.14);
+    --dsw-alias-interactive-bg-hover:rgba(31,35,41,.07);
+    --dsw-alias-brand-primary:#4d6bfe;
+    --dsw-alias-state-success-primary:#12a150;
+    --dsw-alias-state-warn-primary:#c07c00;
+    --dsw-alias-state-error-primary:#d9463f;
+  }
+  body{margin:0;font-family:"Microsoft YaHei",system-ui,sans-serif;background:#f5f6f8;height:640px;overflow:hidden}
+  .mock-sidebar{position:fixed;left:0;top:0;bottom:0;width:248px;background:#fafafa;border-right:1px solid rgba(31,35,41,.08);display:flex;flex-direction:column}
+  .mock-list{flex:1;padding:12px 10px;color:rgba(31,35,41,.5);font-size:12px}
+  .mock-list div.session{padding:8px;border-radius:8px;background:rgba(31,35,41,.05);margin-bottom:6px;color:#1f2329}
+  .mock-foot{padding:6px 0 10px}
+  .mock-user{padding:8px 12px;color:rgba(31,35,41,.55);font-size:12px}
+  #app{width:100%}
+  #err{position:fixed;left:260px;top:8px;color:#d9463f;font:12px/1.5 monospace;white-space:pre-wrap;max-width:600px}
+</style>
+</head>
+<body>
+  <div class="mock-sidebar">
+    <div class="mock-list">
+      <div class="session">新会话</div>
+      <div class="session" style="opacity:.6">实现 DAG 异步工作流调度引擎</div>
+    </div>
+    <div class="mock-foot"><div id="app"></div></div>
+    <div class="mock-user">Leaf_</div>
+  </div>
+  <div id="err"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script>
+    window.addEventListener('error', (e) => { document.getElementById('err').textContent += String(e.message) + '\n' + (e.error && e.error.stack ? e.error.stack : '') + '\n' })
+  </script>
+  <script>
+    // 1) 模拟 DSH 客户端的模块加载器与 React 解析
+    const loaded = []
+    window.__ModuleLoader__ = { load: (entry) => { loaded.push(entry) } }
+  </script>
+  <script src="../lib/client.js"></script>
+  <script>
+    // 2) 假的宿主数据（形状与 /dsh-model-quota/api/summary 一致）
+    const now = Date.now()
+    const SUMMARY = {
+      updatedAt: now,
+      refreshing: false,
+      lastError: null,
+      config: { refreshMs: 300000, showUnconfigured: true, primary: 'deepseek-account' },
+      probe: { seam: 'inject', seamError: null, lastResolveError: null, envRefs: ['OPENCODE_GO_API_KEY'] },
+      settings: {
+        statePath: 'C:\\Users\\Leaf_\\.dsh\\quota-hud\\state.json',
+        prefs: {
+          followModel: true,
+          bonusFirst: true,
+          bonusInColor: true,
+          balance: { healthy: 20, warn: 5 },
+          quota: { preferred: 'rolling', healthy: 20, warn: 5 },
+        },
+        providers: [],
+      },
+      providers: [
+        {
+          id: 'deepseek-account', provider: 'deepseek-account', providerLabel: 'DeepSeek Account', label: 'DeepSeek Account',
+          account: true, configured: true, credentialRef: 'deepseek-account-platform/default',
+          sessionProviders: ['deepseek-account'],
+          status: 'ok', kind: 'balance', amount: -0.06, currency: '¥', caption: '账户余额',
+          wallet: { currency: '¥', total: -0.06, topUp: -0.06, bonus: 10.31 },
+          detail: [['充值余额', '-¥0.06'], ['赠金余额', '¥10.31']], windows: {}, updatedAt: now,
+        },
+        {
+          id: 'deepseek', provider: 'deepseek', providerLabel: 'DeepSeek API', label: 'DeepSeek API',
+          configured: true, credentialRef: 'DEEPSEEK_API_KEY',
+          sessionProviders: ['deepseek-official', 'deepseek'],
+          status: 'ok', kind: 'balance', amount: 23.18, currency: '¥', caption: '账户余额',
+          wallet: { currency: '¥', total: 23.18, topUp: 0.06, bonus: 23.12 },
+          detail: [['充值余额', '¥0.06'], ['赠送余额', '¥23.12']], windows: {}, updatedAt: now,
+          refsTried: [{ ref: 'DEEPSEEK_API_KEY', present: true, source: 'file', used: true }],
+        },
+        {
+          id: 'opencode-go', provider: 'opencode-go', providerLabel: 'OpenCode Go', label: 'OpenCode Go',
+          configured: true, credentialRef: 'OPENCODE_GO_API_KEY',
+          sessionProviders: ['opencode-go'],
+          status: 'ok', kind: 'subscription', updatedAt: now, caption: '', detail: [], plan: null,
+          windows: {
+            rolling: { period: '5h', label: '5 小时额度', usedPercent: 8, remainingPercent: 92, resetsAt: '2026-10-15T14:45:00.000Z' },
+            weekly: { period: '7d', label: '每周额度', usedPercent: 5, remainingPercent: 95, resetsAt: '2026-10-19T00:00:00.000Z' },
+            monthly: { period: 'monthly', label: '每月额度', usedPercent: 2, remainingPercent: 98, resetsAt: '2026-11-15T03:43:15.000Z' },
+          },
+          refsTried: [
+            { ref: 'OPENCODE_GO_API_KEY', present: true, source: 'file', used: true },
+            { ref: 'OPENCODE_GO_KEY', present: false, source: null },
+          ],
+        },
+        {
+          id: 'glm-coding-cn', provider: 'glm-coding-cn', providerLabel: 'GLM Coding 套餐（国内）', label: 'GLM Coding 套餐（国内）',
+          configured: true, credentialRef: 'GLM_CODING_API_KEY',
+          sessionProviders: ['glm-coding'],
+          status: 'ok', kind: 'subscription', updatedAt: now, detail: [],
+          windows: {
+            rolling: { period: '5h', label: '5 小时额度', usedPercent: 96, remainingPercent: 4, resetsAt: '2026-10-16T13:00:00.000Z' },
+            weekly: { period: '7d', label: '每周额度', usedPercent: 40, remainingPercent: 60, resetsAt: '2026-10-19T00:00:00.000Z' },
+          },
+        },
+        {
+          id: 'kimi-coding', provider: 'kimi-coding', providerLabel: 'Moonshot Kimi Code 订阅', label: 'Moonshot Kimi Code 订阅',
+          configured: false, refs: ['KIMI_API_KEY', 'KIMI_CODE_API_KEY', 'KIMI_CODING_API_KEY'], status: 'unconfigured',
+          refsTried: [
+            { ref: 'KIMI_API_KEY', present: false, source: null },
+            { ref: 'KIMI_CODE_API_KEY', present: false, source: null },
+            { ref: 'KIMI_CODING_API_KEY', present: false, source: null },
+          ],
+        },
+        {
+          id: 'zai-coding', provider: 'zai-coding', providerLabel: 'Z.AI GLM Coding（国际）', label: 'Z.AI GLM Coding（国际）',
+          configured: true, credentialRef: 'ZAI_API_KEY',
+          status: 'error', errorCode: 'auth', error: 'HTTP 401 · Token 无效或已过期', windows: {},
+        },
+      ],
+    }
+    // 显示设置（设置 → 额度面板）
+    const SETTINGS = {
+      statePath: 'C:\\Users\\Leaf_\\.dsh\\quota-hud\\state.json',
+      prefs: {
+        followModel: true,
+        bonusFirst: true,
+        bonusInColor: true,
+        balance: { healthy: 20, warn: 5 },
+        quota: { preferred: 'rolling', healthy: 20, warn: 5 },
+      },
+      providers: [
+        { id: 'deepseek-account', label: 'DeepSeek Account', hint: 'DSH 以账号身份接入（充值余额 / 赠金余额）', refs: [], account: true, mode: 'on', detected: true, visible: true, status: 'ok', credentialRef: 'deepseek-account-platform/default' },
+        { id: 'deepseek', label: 'DeepSeek API', hint: '独立 API Key 的账户余额', refs: ['DEEPSEEK_API_KEY', 'DEEPSEEK_KEY'], mode: 'auto', detected: true, visible: true, status: 'ok', credentialRef: 'DEEPSEEK_API_KEY' },
+        { id: 'opencode-go', label: 'OpenCode Go', hint: '订阅额度：5 小时滚动 / 每周 / 每月', refs: ['OPENCODE_GO_API_KEY', 'OPENCODE_GO_KEY'], mode: 'auto', detected: true, visible: true, status: 'ok', credentialRef: 'OPENCODE_GO_API_KEY' },
+        { id: 'kimi-coding', label: 'Moonshot Kimi Code 订阅', hint: 'Kimi Code 套餐窗口', refs: ['KIMI_API_KEY', 'KIMI_CODE_API_KEY', 'KIMI_CODING_API_KEY'], mode: 'auto', detected: false, visible: false, status: 'unconfigured', credentialRef: null },
+        { id: 'glm', label: 'GLM 开放平台', hint: '智谱开放平台配额', refs: ['ZHIPU_API_KEY', 'GLM_API_KEY', 'ZHIPU_KEY'], mode: 'auto', detected: false, visible: false, status: 'unconfigured', credentialRef: null },
+        { id: 'zai-coding', label: 'Z.AI GLM Coding（国际）', hint: 'Z.AI Coding Plan 窗口', refs: ['ZAI_API_KEY', 'Z_AI_API_KEY'], mode: 'off', detected: true, visible: false, status: 'error', credentialRef: 'ZAI_API_KEY' },
+      ],
+    }
+
+    window.fetch = async (url) => {
+      const body = String(url).includes('/settings') ? SETTINGS : SUMMARY
+      return { ok: true, status: 200, json: async () => body }
+    }
+
+    // 3) 假的 cordis 客户端上下文：捕获 slot 注册 + 假的会话/模型选择投影
+    //    （投影 face 是「当前对话模型商」的权威来源，真实实现里就是
+    //     binding.session.projections.faceOf('modelSelection')）
+    const registrations = []
+    const selectionFace = {
+      value: { next: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } },
+      getSnapshot() { return this.value },
+      subscribe() { return () => {} },
+    }
+    const fakeSessions = {
+      list: {
+        getSnapshot: () => ({ byId: { 'sess-1': { id: 'sess-1', retainedBy: { mainView: 1 } } } }),
+        subscribe: () => () => {},
+      },
+      binding: () => ({
+        session: { projections: { faceOf: (name) => (name === 'modelSelection' ? selectionFace : null) } },
+      }),
+    }
+    const ctx = {
+      effect(fn) { return fn() },
+      get(name) {
+        return name === 'sessions' ? fakeSessions : null
+      },
+      slots: {
+        inject(name, cb) { registrations.push({ name, handle: cb() }); return () => {} },
+        register(options, component) { registrations.push({ options, component }); return () => {} },
+      },
+    }
+
+    const entry = loaded[0]
+    const mod = entry.factory((name) => {
+      if (name === 'react') return React
+      if (name === 'react-dom') return ReactDOM
+      if (name === 'react/jsx-runtime') return { jsx: React.createElement, jsxs: React.createElement, Fragment: React.Fragment }
+      throw new Error('unknown require: ' + name)
+    })
+    mod.apply(ctx)
+
+    // 4) 渲染：默认画侧栏卡片 + 面板；?view=settings 时改画设置页
+    const isSettings = location.search.includes('view=settings')
+    const components = registrations.map((r) => r.component).filter(Boolean)
+    const card = components.find((c) => c.name === 'QuotaCard') || components[0]
+    const settingsPage = components.find((c) => c.name === 'QuotaSettings') || components[components.length - 1]
+
+    if (isSettings) {
+      document.querySelector('.mock-sidebar').style.display = 'none'
+      document.getElementById('app').style.display = 'none'
+      document.body.style.background = '#ffffff'
+      const host = document.createElement('div')
+      host.style.position = 'fixed'
+      host.style.left = '24px'
+      host.style.top = '24px'
+      host.style.right = '24px'
+      host.style.maxWidth = '720px'
+      host.style.padding = '16px 18px'
+      host.style.border = '1px solid rgba(31,35,41,.12)'
+      host.style.borderRadius = '14px'
+      host.style.background = '#fff'
+      document.body.appendChild(host)
+      ReactDOM.createRoot(host).render(React.createElement(settingsPage))
+      document.title = 'ready'
+    } else {
+      ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(card, { wide: true }))
+      // 5) 自动点开面板，便于截图
+      setTimeout(() => {
+        const button = document.querySelector('.qh-card')
+        if (button) button.click()
+        document.title = 'ready'
+      }, 600)
+    }
+  </script>
+</body>
+</html>

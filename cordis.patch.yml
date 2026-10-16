@@ -1,0 +1,7 @@
+# dsh-model-quota bundle patch：把宿主行插进 profile 的插件名单。
+# 浏览器半由 package.json 的 `dsh.client` 清单声明（客户端注册表负责提供
+# lib/client.js）。本文件由 bundle 层自动应用，**不要**再在 profile 的
+# cordis.patch.yml 里重复 insert 同一 id（重复 id 会让加载器起不来）。
+- insert:
+    - id: dsh-model-quota
+      name: 'dsh-model-quota'
