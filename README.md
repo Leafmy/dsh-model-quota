@@ -172,15 +172,17 @@ DeepSeek Account / DeepSeek API 这类带「赠金 / 赠送余额」的供应商
 key 与 Kimi Code 订阅 key 是两个体系，不能混）。要加名字：改 `REF_ALIASES`，或在该
 供应商的配置里直接写 `refs: [...]`（配置里写的排在别名前面）。
 
-## 安装（本机现状）
+## 开发机备注（本机部署现状）
 
-已装进 `desktop` profile：
+作者本机已装进 `desktop` profile，方式是**源码 junction**（方便改代码即时生效）：
 
 - 源码：`C:\Users\Leaf_\Documents\deepseek-harness\default-workspace\dsh-model-quota`
 - profile 里以 **junction** 挂载：`~\.dsh\profiles\desktop\node_modules\dsh-model-quota`
 - `~\.dsh\profiles\desktop\package.json` 的 `dsh.profile.bundles` 里加了 `"dsh-model-quota"`
 - `~\.dsh\profiles\desktop\cordis.patch.yml` 末尾有 `- id: dsh-model-quota` 的配置覆盖行
-  （包自带的 `cordis.patch.yml` 已 insert 过该 id，用户层只能覆盖、不能重复 insert）
+
+> 如果你想改成「从 npm 装」，先用 `dsh plugin --profile desktop remove dsh-model-quota` 清掉这条
+> junction 挂载与 bundles 项，再 `dsh plugin --profile desktop add dsh-model-quota`。
 
 > **junction 掉了怎么修**：这条挂载没写进 `dependencies`（避免和 pnpm 的 lockfile 打架），
 > 所以以后用 GUI 插件管理器装/卸别的插件时，pnpm 重排 node_modules 可能会把它删掉。
@@ -364,3 +366,7 @@ Invoke-WebRequest http://127.0.0.1:19387/dsh-model-quota/api/summary -UseBasicPa
   （改 `PARSERS` 里对应的解析函数即可）；Moonshot 开放平台余额接口只在国际站可用；
   MiniMax / 智谱的窗口语义按社区实测口径归一化，若你的套餐口径不同，改
   `windowLabels` 或解析函数。
+
+## License
+
+[MIT](LICENSE) © 2026 Leafmy
