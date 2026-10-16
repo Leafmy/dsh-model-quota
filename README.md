@@ -1,25 +1,13 @@
-# dsh-model-quota — 模型余额与额度面板（DSH 插件）
+# dsh-model-quota — 模型余额与额度面板
 
 给 DeepSeek Harness Web 界面加一个「模型余额与额度」面板：侧栏底部常驻一张额度卡片，
 点一下在右侧展开面板，逐行列出各供应商的**账户余额**或**套餐窗口（5 小时 / 每周 / 每月）
-剩余百分比 + 重置时间**。默认只显示 DeepSeek 账号，其余供应商一旦检测到已配置的凭据
-就自动出现；`设置 → 额度面板` 里可以逐个开关。密钥只在宿主进程内使用，绝不下发浏览器。
+剩余百分比 + 重置时间**。默认只显示 DeepSeek Account，其余供应商一旦检测到已配置的凭据
+就自动出现；`设置 → 额度面板` 里可以逐个开关。密钥只在宿主进程内使用，不下发浏览器。
 
 ![面板预览](tests/sandbox-shot.png)
 
 ![设置页](tests/sandbox-settings.png)
-
-（上图是 `tests/sandbox-render.html` 沙盒渲染的实拍：真实 GUI 里卡片在左侧边栏底部，
-面板从卡片右侧弹出，设置页在「设置」弹窗的左侧导航里。）
-
-## 两个 DeepSeek 是两回事
-
-| 供应商 | 接入方式 | 余额来源 | 凭据 |
-|---|---|---|---|
-| **DeepSeek Account**（`deepseek-account`） | DSH 直接以**账号身份**接入（设置 → 账号与余额 里登录） | 宿主账号服务 `ctx.deepseekAccount.getBalance()`：充值钱包 + 赠金钱包 | 登录凭证记录 `deepseek-account-platform/default`（不读 API Key） |
-| **DeepSeek API**（`deepseek`） | 独立的 **API Key** 接入 | `api.deepseek.com/user/balance` | `DEEPSEEK_API_KEY` |
-
-两者互不影响：账号的充值/赠金与 API Key 余额各算各的，面板里是两行。
 
 ## 安装
 
@@ -40,10 +28,6 @@ dsh plugin --profile <你的 profile 名> add ./dsh-model-quota-1.0.0.tgz
 
 升级：把 URL 里的 tag 换成新版本即可；先把旧版本移除更干净
 （`dsh plugin --profile <profile> remove dsh-model-quota` 再 add）。
-
-> 这个 `.tgz` 就是标准 npm 包格式（`package/` 前缀 + `package.json` 的 `dsh` 清单），
-> 所以如果你自己的 registry／私有源能托管它，也能用 `dsh plugin add <包名>` 装；
-> 本项目**没有**发布到 npmjs.org（那个名字已被他人占用），Release 资产就是官方分发渠道。
 
 ### 方式二：本地源码 / 手动安装
 
@@ -73,46 +57,6 @@ dsh plugin --profile desktop add file:/绝对路径/dsh-model-quota
 同一个 DSH 里往往配了好几个供应商：DeepSeek 按量计费看余额，OpenCode Go / GLM Coding /
 Kimi Code 是套餐制看滚动窗口。以前要分别登录各家控制台才能知道「还能不能接着干」。
 本插件把这些读数聚合到侧栏一个卡片上，一眼可见。
-
-## 显示规则（默认只留 Account）
-
-- **DeepSeek Account 常驻显示**（唯一默认常驻的行）。
-- 其它供应商：**检测到已配置的凭据就自动出现**，没有就不显示。检测口径 =
-  凭据库里该名字已配置 / 环境变量里有 / 账号已登录。
-- 每个供应商有三态开关（`设置 → 额度面板`）：`自动`（检测到就显示，默认）/ `显示`（无视检测结果都显示）/ `隐藏`。
-- **卡片跟随当前对话的模型商**（默认开）：读 DSH 客户端 `sessions.list` 里
-  `retainedBy.mainView > 0` 的那个会话，再取它的模型商，映射到本插件的供应商行
-  （如 `opencode-go` → OpenCode Go、`deepseek-official` → DeepSeek API）。取不到时回落到配置里的 `primary`。
-
-  实现细节（决定它快不快）：**不建目录、不拉模型目录、不联网**——直接读会话的
-  「模型选择」投影 `binding.session.projections.faceOf('modelSelection')`（权威来源，
-  官方模型选择器自己也从这里的 `next` 取值），并**订阅**它与会话列表：切模型 / 切会话时
-  卡片立刻更新，不再等下一次快照轮询。只有投影还没给出选择（空白会话）时才退回
-  `modelDirectories.directoryFor(id).store`，且按会话缓存、只解析一次。
-  这里用「订阅 + 只存字符串」而不是 `useSyncExternalStore`，是为了避免某些 store 的
-  `getSnapshot` 每次返回新对象时自激成无限渲染（React #185）。
-- 开关与偏好保存在 `$DSH_HOME/dsh-model-quota/state.json`（默认 `~/.dsh/dsh-model-quota/state.json`），
-  人可读、可直接编辑或删除；删掉即回到默认。
-- 想「永远列出全部（含未配置的灰显行）」：配置里把 `showUnconfigured: true` 打开。
-
-例：只登录了 DeepSeek 账号 + 配了 `DEEPSEEK_API_KEY` + `OPENCODE_GO_API_KEY`，
-面板里就只有这三行（DeepSeek Account / DeepSeek API / OpenCode Go）；其余供应商不显示，
-但在设置页里仍然可见、可手动打开。
-
-## 面板里有什么
-
-- **卡片**（侧栏底部，设置项上方）：默认**跟随当前对话所选的模型商**——对话里用的是
-  OpenCode Go 的模型，卡片就显示 OpenCode Go 的额度；`default` 标签会变成「当前模型」。
-  第二行是余额或 `剩余 NN%`，第三行是窗口名（如「5 小时额度」）或「余额」。
-  侧栏收起时退化成一行紧凑读数。
-- **面板**（点卡片展开）：
-  - 余额型供应商：大号金额，下面按「赠金优先」规则显示（见下）；
-  - 套餐型供应商：每个窗口一行 `窗口名 —— 剩余 NN%` + 进度条 + `MM月DD日 HH:MM 重置`；
-    优先项（默认 5 小时）排在最前；
-  - 未配密钥的供应商（仅在 `showUnconfigured` 或手动「显示」时出现）灰显「未配置凭据」，
-    并把**逐个候选凭据名的存在性**列出来；
-  - 页脚：`前台每 N 分钟更新 · 设置 → 额度面板 管理显示` + 数据更新时间；右上角 ⟳ 立即刷新。
-- 排序：读到数据的在前，报错的其次，未配置的最后。
 
 ## 余额怎么显示（赠金优先 + 颜色）
 
@@ -144,8 +88,6 @@ DeepSeek Account / DeepSeek API 这类带「赠金 / 赠送余额」的供应商
 
 ## 供应商目录
 
-开箱支持（`lib/impl.js` 的 `CATALOG`，按需增删）：
-
 | id | 显示名 | 凭据引用 | 接口 | 语义 |
 |---|---|---|---|---|
 | `deepseek-account` | DeepSeek Account | （账号登录记录） | 宿主 `ctx.deepseekAccount` | 充值 + 赠金余额，**默认常驻** |
@@ -162,67 +104,13 @@ DeepSeek Account / DeepSeek API 这类带「赠金 / 赠送余额」的供应商
 | `stepfun` | StepFun 阶跃星辰 | `STEPFUN_API_KEY` | `api.stepfun.com/v1/accounts` | 账户余额 |
 | `xai` | xAI | `XAI_API_KEY` | `api.x.ai/v1/billing/credits` | 剩余额度 |
 
-凭据按 `refs` 顺序查找：先经 DSH 凭据缝（`ctx.credentials`，也就是设置页里存的
-`~/.dsh/.credentials.yaml`）解析，取不到再退回进程环境变量。**凭据值只在宿主进程内存里
-使用，不写入任何响应体**；面板下发的只有「凭据名」提示。
-
-### 凭据名别名（「已配置却显示未配置凭据」的根治）
-
-同一家的 key 在不同工具里名字不一样，**只认一个名字就会误判**。真实例子：
-
-| 工具 | OpenCode Go 的凭据名 |
-|---|---|
-| DSH（`llm-pi-ai` 的 `apiKeyEnv`） | `OPENCODE_GO_API_KEY` |
-| 天枢 Tianshu-harness（`provider-presets.ts`） | `OPENCODE_GO_KEY` |
-
-所以每个供应商都按「自己的名字 → 别名」依次尝试（`lib/impl.js` 的 `REF_ALIASES`），
-并且把**逐个候选名的体检结果**放进快照：面板在「未配置凭据」下面直接列出
-「查找过的凭据名：`KIMI_API_KEY` 未设置 / `KIMI_CODE_API_KEY` 已设置（环境变量）…」，
-`GET /summary` 的 `probe.refs` 也能拿到同一份事实。
-
-只列**同一把 key 的不同写法**；语义不同的 key 不互相别名（Moonshot 开放平台的按量
-key 与 Kimi Code 订阅 key 是两个体系，不能混）。要加名字：改 `REF_ALIASES`，或在该
-供应商的配置里直接写 `refs: [...]`（配置里写的排在别名前面）。
-
-## 开发机备注（本机部署现状）
-
-作者本机的 `desktop` profile **从 Release 安装**（和普通用户一致）：
-
-```jsonc
-// ~/.dsh/profiles/desktop/package.json
-"dependencies": {
-  "dsh-model-quota": "https://codeload.github.com/Leafmy/dsh-model-quota/tar.gz/refs/tags/v1.0.0"
-},
-"dsh": { "profile": { "bundles": ["…", "dsh-model-quota"] } }
-```
-
-- 安装副本：`~\.dsh\profiles\desktop\node_modules\dsh-model-quota`
-- 配置覆盖行：`~\.dsh\profiles\desktop\cordis.patch.yml` 末尾的 `- id: dsh-model-quota`
-- 开发源码（与安装副本分离）：`C:\Users\Leaf_\Documents\deepseek-harness\default-workspace\dsh-model-quota`
-
-### 想在开发机上改代码：切回源码 junction
-
-```bash
-dsh plugin --profile desktop remove dsh-model-quota
-```
-
-```powershell
-New-Item -ItemType Junction `
-  -Path "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-model-quota" `
-  -Target "C:\Users\Leaf_\Documents\deepseek-harness\default-workspace\dsh-model-quota"
-```
-
-再把 `"dsh-model-quota"` 加回 profile `package.json` 的 `dsh.profile.bundles`，改一次
-`cordis.patch.yml` 触发重组即可（宿主半立刻生效；客户端半要重启应用）。切回发布版就反过来：
-删 junction → `dsh plugin --profile desktop add <Release 里的 URL>`。
-
-### 卸载
-### 卸载
+## 卸载
 
 1. 删掉 profile `package.json` 里 bundles 的 `"dsh-model-quota"` 一行；
 2. 删掉 `cordis.patch.yml` 末尾那条 `- id: dsh-model-quota` 覆盖行；
-3. 删掉 `node_modules\dsh-model-quota` 这个 junction；
-4. 重启 DSH Desktop。
+3. 删掉 `node_modules\dsh-model-quota` 这个 junction（如果是 `dsh plugin add` 装的，改用
+   `dsh plugin --profile desktop remove dsh-model-quota`）；
+4. 重启 DSH。
 
 ## 配置
 
@@ -264,129 +152,16 @@ New-Item -ItemType Junction `
 `minimax-remains`、`opencode-usage`）。要接一个全新形状的接口，在 `CATALOG` 旁边加一个
 解析函数并登记到 `PARSERS` 即可，约 10 行。
 
-## HTTP 路由（宿主半 → 浏览器半）
-
-前缀 `/dsh-model-quota/api`，仅同源可访问（带 `Origin` 且与 `Host` 不符直接 403）：
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| `GET` | `/summary` | 完整快照：`{ updatedAt, refreshing, lastError, config, probe, settings, providers[] }`（`providers` 只含当前应展示的行） |
-| `POST` | `/refresh` | 立刻重新拉取（2 秒冷却，防止连点） |
-| `GET` | `/settings` | 显示设置：全部候选供应商 + `mode/detected/visible` + `prefs` + 状态文件路径 |
-| `POST` | `/settings` | 改设置：`{ providers: { id: "auto"\|"on"\|"off" }, prefs: { followModel, bonusFirst, bonusInColor, balance:{healthy,warn}, quota:{preferred,healthy,warn} } }`（都可部分更新），落盘并重算可见性 |
-| `GET` | `/providers` | 只列出供应商 id / 名称 / 凭据引用 |
-
-`probe` 是诊断字段（**不含任何密钥值**）：凭据缝是怎么拿到的（`inject` / `direct`）、
-上次解析与体检的报错、命中了哪些环境变量名，以及 `refs: { 引用名: { present, source, usedBy[] } }`
-——「已配置却显示未配置凭据」的取证入口。`describe()` 只回 `configured/source/writable`，
-从不回值，测试里也断言了这一点。
-
-### 行字段（对齐天枢的 `ProviderUsageAccount` 词表）
-
-每行同时给出插件自己的字段与天枢契约里的等价字段，方便两边工具复用同一份数据：
-
-| 字段 | 说明 |
-|---|---|
-| `provider` / `providerLabel` | 同 `id` / `label`（对齐 Tianshu `ProviderUsageAccount`） |
-| `kind` | `balance`（按量余额）/ `subscription`（套餐窗口）/ `unsupported`（无公开接口，只报配额） |
-| `status` | `ok` / `unconfigured` / `error`（+ 首屏 `loading`） |
-| `errorCode` | `auth` / `rate-limit` / `timeout` / `network` / `invalid-response` / `unavailable` / `unknown` |
-| `refsTried` | 逐个候选凭据名的 `{ ref, present, source, used }` |
-| `account` | 账户型行（DeepSeek Account）为 `true`，`configured/accountSignedIn` 表示登录态 |
-| `wallet` | `{ currency, total, topUp, bonus }`：赠金优先显示与告警颜色都基于它 |
-| `sessionProviders` | 该行对应的「会话模型商名」，卡片跟随当前对话时用来配对 |
-| `windows.<key>` | `{ period: '5h'\|'7d'\|'monthly', label, remainingPercent, usedPercent, resetsAt }` |
-
-## 测试
-
-```bash
-node --test tests/quota.test.mjs          # 31 项：解析器（含钱包/赠金） + 配置与偏好归一化 + 凭据别名/诊断 + 可见性/设置页 + 账号余额 + 路由端到端（假 fetch）
-```
-
-`tests/sandbox-render.html` 是客户端半的渲染沙盒：用 CDN 的 React 加载 `lib/client.js`，
-喂一份假的 `/summary` 数据，自动展开面板——用无头 Chrome 截图就能看外观：
-
-```bash
-# 面板
-chrome --headless=new --window-size=1000,780 --virtual-time-budget=8000 \
-  --screenshot=tests/sandbox-shot.png tests/sandbox-render.html
-# 设置页
-chrome --headless=new --window-size=1000,780 --virtual-time-budget=8000 \
-  --screenshot=tests/sandbox-settings.png "tests/sandbox-render.html?view=settings"
-```
-
-## 改代码后怎么生效
-
-入口 `lib/host.js` 只做一件事：`import('./impl.js?v=<stamp>')`。于是：
-
-- 改 `lib/impl.js`（目录、解析、路由、调度）→ 触发一次 profile 重组（改
-  `cordis.patch.yml` / `package.json` 任意一处并保存）即可生效，**不用重启**；
-- 改 `lib/host.js` 入口本身、或客户端半 `lib/client.js` → 需要重启 DSH Desktop
-  （客户端半也可以只刷新页面，前提是重启过一次让它在启动时进入客户端模块图）；
-- 为什么用带 `?v=` 的动态导入：本机 DSH 的 HMR 是 `root: []`，只监听 profile
-  配置文件、不监听模块源码，模块缓存又按 URL 命中——带时间戳的动态导入是让
-  「重组即重载」生效的最省事办法。
-
-## 排查「显示未配置凭据」
-
-按顺序看三个地方，能直接定位到底是哪一类问题：
-
-```powershell
-# 1) 面板里：未配置的那一行下面会列出「查找过的凭据名 + 已设置/未设置」
-# 2) 宿主端事实（同一份数据）：
-Invoke-WebRequest http://127.0.0.1:19387/dsh-model-quota/api/summary -UseBasicParsing |
-  Select-Object -ExpandProperty Content | ConvertFrom-Json |
-  Select-Object -ExpandProperty providers | Where-Object id -eq 'opencode-go' | ConvertTo-Json -Depth 5
-```
-
-| 现象 | 含义 | 怎么办 |
-|---|---|---|
-| 所有候选名都 `present: false` | 这个进程里没有这把 key：既不在 DSH 凭据库，也不在环境变量 | 在 **设置 → 模型** 里填 key（写入 `~/.dsh/.credentials.yaml`）；或设好环境变量后**重启 DSH**（环境变量只在启动时读） |
-| 某个候选名 `present: true` 但状态是 `unconfigured` | 名字对了，但凭据缝解析没返回值 | 看 `probe.lastResolveError`；凭据库文件被外部改动/只读时会这样 |
-| `present: true` 且状态 `error` + `errorCode: 'auth'` | key 找到了，上游说无效/过期 | 换 key |
-| `probe.seam: 'none'` | 凭据服务没拿到（插件挂载时服务还没就绪） | 重启一次；仍不行就把 `probe` 贴给我 |
-| 某供应商压根没出现在面板里 | 没检测到凭据（默认 `auto`） | 在 设置 → 模型 里加 key，或去 `设置 → 额度面板` 把它调成「显示」 |
-| `deepseek-account` 显示「未登录 DeepSeek 账号」 | DSH 账号没登录 | 设置 → 账号与余额 里登录 |
-| `deepseek-account` 显示「账号服务未就绪」 | 这个组合里没有 `deepseek-account-platform`（例如纯 `dsh web`） | 正常现象；不需要就把它调成「隐藏」 |
-
-> 注意：环境变量是**进程启动时**读的，`set` 完不重启 DSH 不会生效；这也正是
-> 「明明设了却还是未配置」的常见成因之一。
-
 ## 与天枢（Tianshu-harness）的关系
 
-参考了 [huiliyi37/Tianshu-harness](https://github.com/huiliyi37/Tianshu-harness)（Apache-2.0），
-但**没有移植它的面板代码**：那个「模型余额与额度」面板的实现不在公开仓里，而在闭源的
-`src/pro/provider-usage/`（`src/server/provider-usage-routes.ts` 里 `loadImplementation()`
-只在 `pro/` 与 `server/pro/` 下找模块，公开构建里缺席）。公开仓里真正能复用的是两样东西，
-本插件都吃下了：
+参考了 [huiliyi37/Tianshu-harness](https://github.com/huiliyi37/Tianshu-harness)（Apache-2.0），复用两样东西：
 
 1. **供应商预设表**（`src/config/provider-presets.ts`）——各家官方 key 页、`apiKeyEnv`
-   命名、baseUrl。我用它校准了凭据名与别名，其中一条直接解释了「已配置却显示未配置凭据」：
-   天枢给 OpenCode Go 的 `apiKeyEnv` 是 `OPENCODE_GO_KEY`，而 DSH 是 `OPENCODE_GO_API_KEY`。
+   命名、baseUrl。
 2. **数据契约**（`src/server/protocol.ts` 的 `ProviderUsageAccount` / `ProviderUsageSnapshot`
    与 `ProviderUsageStatus` / `ProviderUsageError` / `ProviderQuotaPeriod` 词表）——本插件的行
-   字段与错误码词表按它对齐（见上表），`kind: 'subscription'`、`period: '5h'|'7d'|'monthly'`、
+   字段与错误码词表按它对齐，`kind: 'subscription'`、`period: '5h'|'7d'|'monthly'`、
    `remainingPercent`、`errorCode: 'auth'|'rate-limit'|…` 都取自这里。
-
-顺手记一条天枢侧的可疑缺陷（供上游参考，不是本插件的问题）：它的标准环境变量兜底是
-`src/api/factory.ts:97` 的 `` `${name.toUpperCase()}_API_KEY` ``，provider 名用的是
-`opencode-go`，于是兜底名成了 **`OPENCODE-GO_API_KEY`（连字符）**，而用户自然会设的
-`OPENCODE_GO_API_KEY`（下划线，也是 DSH 的命名）**既不等于预设的 `OPENCODE_GO_KEY`、
-也不等于兜底名** → 面板就可能报「未配置凭据」。同一写法还会波及 `zhipu-vision` 等
-带连字符的 provider 名。天枢自己的注释里也承认过这类风险（`provider-key-store.ts`
-「UI 说未配而请求实际拿得到 key」）。
-
-## 设计取舍
-
-- **零第三方依赖**：只用 Node 内建 `fetch` 与 DSH 的公开缝（`credentials`、`webServer`、
-  `slots`），不 import `@deepseek-ai/*`，不碰 DSH 配置与会话日志，纯只读。
-- **逐行独立失败**：一个供应商挂了只影响它自己那行（显示错误原因），不影响其他行。
-- **不猜数**：上游解析失败就显示「读取失败 + 原因」或 `—`，绝不把读不到当成 0。
-- **密钥不出宿主**：浏览器只拿到结果，且路由带同源校验。
-- **已知限制**：各家额度接口都不是公开承诺的稳定 API，上游改字段会导致对应行报错
-  （改 `PARSERS` 里对应的解析函数即可）；Moonshot 开放平台余额接口只在国际站可用；
-  MiniMax / 智谱的窗口语义按社区实测口径归一化，若你的套餐口径不同，改
-  `windowLabels` 或解析函数。
 
 ## License
 
