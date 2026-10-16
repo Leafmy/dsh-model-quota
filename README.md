@@ -23,23 +23,35 @@
 
 ## 安装
 
-### 从 npm（推荐）
+### 方式一：GitHub Release（推荐，不需要 npm）
 
 ```bash
-dsh plugin --profile <你的 profile 名> add dsh-model-quota
+# 直接装这个 tag 的源码包（本机已实测可用）
+dsh plugin --profile <你的 profile 名> add https://codeload.github.com/Leafmy/dsh-model-quota/tar.gz/refs/tags/v1.0.0
+```
+
+或者从 [Releases](https://github.com/Leafmy/dsh-model-quota/releases) 下载 `dsh-model-quota-1.0.0.tgz` 再装：
+
+```bash
+dsh plugin --profile <你的 profile 名> add ./dsh-model-quota-1.0.0.tgz
 ```
 
 装完**完全退出并重开 DSH Desktop**（客户端半在启动时组装，刷新页面不够）。
 
-### 从 tarball / 本地目录
+升级：把 URL 里的 tag 换成新版本即可；先把旧版本移除更干净
+（`dsh plugin --profile <profile> remove dsh-model-quota` 再 add）。
+
+> 这个 `.tgz` 就是标准 npm 包格式（`package/` 前缀 + `package.json` 的 `dsh` 清单），
+> 所以如果你自己的 registry／私有源能托管它，也能用 `dsh plugin add <包名>` 装；
+> 本项目**没有**发布到 npmjs.org（那个名字已被他人占用），Release 资产就是官方分发渠道。
+
+### 方式二：本地源码 / 手动安装
 
 ```bash
-dsh plugin --profile desktop add ./dsh-model-quota-1.0.0.tgz
-# 或
 dsh plugin --profile desktop add file:/绝对路径/dsh-model-quota
 ```
 
-### 手动安装（不使用插件管理器）
+手动（不使用插件管理器）：
 
 1. 把包放进 profile 的 `node_modules/`（复制或 junction 都行）：
 
