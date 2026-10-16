@@ -186,28 +186,37 @@ key 与 Kimi Code 订阅 key 是两个体系，不能混）。要加名字：改
 
 ## 开发机备注（本机部署现状）
 
-作者本机已装进 `desktop` profile，方式是**源码 junction**（方便改代码即时生效）：
+作者本机的 `desktop` profile **从 Release 安装**（和普通用户一致）：
 
-- 源码：`C:\Users\Leaf_\Documents\deepseek-harness\default-workspace\dsh-model-quota`
-- profile 里以 **junction** 挂载：`~\.dsh\profiles\desktop\node_modules\dsh-model-quota`
-- `~\.dsh\profiles\desktop\package.json` 的 `dsh.profile.bundles` 里加了 `"dsh-model-quota"`
-- `~\.dsh\profiles\desktop\cordis.patch.yml` 末尾有 `- id: dsh-model-quota` 的配置覆盖行
+```jsonc
+// ~/.dsh/profiles/desktop/package.json
+"dependencies": {
+  "dsh-model-quota": "https://codeload.github.com/Leafmy/dsh-model-quota/tar.gz/refs/tags/v1.0.0"
+},
+"dsh": { "profile": { "bundles": ["…", "dsh-model-quota"] } }
+```
 
-> 如果你想改成「从 npm 装」，先用 `dsh plugin --profile desktop remove dsh-model-quota` 清掉这条
-> junction 挂载与 bundles 项，再 `dsh plugin --profile desktop add dsh-model-quota`。
+- 安装副本：`~\.dsh\profiles\desktop\node_modules\dsh-model-quota`
+- 配置覆盖行：`~\.dsh\profiles\desktop\cordis.patch.yml` 末尾的 `- id: dsh-model-quota`
+- 开发源码（与安装副本分离）：`C:\Users\Leaf_\Documents\deepseek-harness\default-workspace\dsh-model-quota`
 
-> **junction 掉了怎么修**：这条挂载没写进 `dependencies`（避免和 pnpm 的 lockfile 打架），
-> 所以以后用 GUI 插件管理器装/卸别的插件时，pnpm 重排 node_modules 可能会把它删掉。
-> 现象是面板消失、`/dsh-model-quota/api/summary` 404；重挂一条即可（不用重启：
-> 再改一次 cordis.patch.yml 触发重组）：
->
-> ```powershell
-> New-Item -ItemType Junction `
->   -Path "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-model-quota" `
->   -Target "C:\Users\Leaf_\Documents\deepseek-harness\default-workspace\dsh-model-quota"
-> ```
+### 想在开发机上改代码：切回源码 junction
 
+```bash
+dsh plugin --profile desktop remove dsh-model-quota
+```
 
+```powershell
+New-Item -ItemType Junction `
+  -Path "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-model-quota" `
+  -Target "C:\Users\Leaf_\Documents\deepseek-harness\default-workspace\dsh-model-quota"
+```
+
+再把 `"dsh-model-quota"` 加回 profile `package.json` 的 `dsh.profile.bundles`，改一次
+`cordis.patch.yml` 触发重组即可（宿主半立刻生效；客户端半要重启应用）。切回发布版就反过来：
+删 junction → `dsh plugin --profile desktop add <Release 里的 URL>`。
+
+### 卸载
 ### 卸载
 
 1. 删掉 profile `package.json` 里 bundles 的 `"dsh-model-quota"` 一行；
