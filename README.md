@@ -57,7 +57,7 @@ dsh plugin --profile desktop add file:/绝对路径/dsh-model-quota
 | 项 | 值 |
 |---|---|
 | **目标版本** | **DSH 0.2.1-rc.1** |
-| 已实测兼容 | 0.2.1-rc.1（宿主 + 客户端全链路，2026-10-17）、0.2.0-rc.2（1.0.0 的验证基线） |
+| 已实测兼容 | 0.2.1-rc.1（宿主路由 + DeepSeek Account + 侧栏卡片实测，2026-10-17）、0.2.0-rc.2（1.0.0 的验证基线） |
 | 未做兼容承诺 | 其它版本未实测；升级 DSH 后建议照下面「依赖的缝」复核一遍 |
 
 0.2.1-rc.1 上的实测证据：
@@ -68,6 +68,8 @@ dsh plugin --profile desktop add file:/绝对路径/dsh-model-quota
   （充值 + 赠金钱包），与独立 API Key 的行互不影响。
 - **客户端**：侧栏底部额度卡片正常渲染，并跟随当前会话的模型商
   （卡片显示的 provider 与当前会话 `modelSelection.lastUsed.provider` 一致）。
+- **设置页**：「额度面板」section 的槽位声明与注册形状按官方用法逐条静态核对；未做视觉确认
+  （无 CDP/token，无法在运行实例里打开设置页截图）。
 
 依赖的缝（都只走 DSH 公开面，不 import 内部包）：
 
