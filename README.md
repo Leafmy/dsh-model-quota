@@ -52,6 +52,35 @@ dsh plugin --profile desktop add file:/绝对路径/dsh-model-quota
 > 同一个 id**（重复 id 会让加载器起不来）；要改配置就在 profile 的 `cordis.patch.yml` 里写一条
 > 同 id 的覆盖行（见下面「配置」）。
 
+## 兼容性
+
+| 项 | 值 |
+|---|---|
+| **目标版本** | **DSH 0.2.1-rc.1** |
+| 已实测兼容 | 0.2.1-rc.1（宿主 + 客户端全链路，2026-10-17）、0.2.0-rc.2（1.0.0 的验证基线） |
+| 未做兼容承诺 | 其它版本未实测；升级 DSH 后建议照下面「依赖的缝」复核一遍 |
+
+0.2.1-rc.1 上的实测证据：
+
+- **宿主路由**：`/dsh-model-quota/api/summary`、`/settings`、`/providers` 均 200；
+  `probe.seam = "inject"`、`lastResolveError / lastDescribeError / lastAccountError` 全为 `null`。
+- **DeepSeek Account**：`ctx.deepseekAccount.getState()/getBalance()` 取到真实余额
+  （充值 + 赠金钱包），与独立 API Key 的行互不影响。
+- **客户端**：侧栏底部额度卡片正常渲染，并跟随当前会话的模型商
+  （卡片显示的 provider 与当前会话 `modelSelection.lastUsed.provider` 一致）。
+
+依赖的缝（都只走 DSH 公开面，不 import 内部包）：
+
+- 宿主：`ctx.credentials.resolve/describe`、`ctx.deepseekAccount`、`webServer.register({ kind: 'prefix', … })`。
+- 客户端：`window.__ModuleLoader__.load`、`require('react'/'react-dom')`、
+  `slots` 的 `sidebar.footer.action` 与 `settings.section` 槽、
+  `sessions.list` 快照里的 `retainedBy.mainView`、
+  `sessions.binding(id).session.projections.faceOf('modelSelection')`、
+  `ctx.modelDirectories`（兜底路径）。
+
+这些缝任何一个在将来消失，插件是**降级**而不是崩溃：卡片退回配置的 `primary` 供应商，
+单个供应商行显示明确的错误原因（错误码词表见下）。
+
 ## 它解决什么
 
 同一个 DSH 里往往配了好几个供应商：DeepSeek 按量计费看余额，OpenCode Go / GLM Coding /
@@ -123,7 +152,7 @@ DeepSeek Account / DeepSeek API 这类带「赠金 / 赠送余额」的供应商
 | `timeoutMs` | `15000` | 单个供应商请求超时 |
 | `showUnconfigured` | `false` | `false`=只显示 Account + 检测到的（推荐）；`true`=全部列出（未配置的灰显） |
 | `primary` | `deepseek-account` | 卡片优先展示哪个供应商 |
-| `accountClientVersion` | 环境变量/`0.2.0-rc.2` | DeepSeek 账号余额请求带的客户端版本号 |
+| `accountClientVersion` | 环境变量/`0.2.1-rc.1` | DeepSeek 账号余额请求带的客户端版本号（`x-client-version`） |
 | `statePath` | `$DSH_HOME/dsh-model-quota/state.json` | 显示开关与偏好的持久化路径 |
 | `hide` | `[]` | 从面板与设置页隐藏的供应商 id |
 | `providers` | `{}` | 按 id 覆盖目录条目，或新增自定义供应商 |

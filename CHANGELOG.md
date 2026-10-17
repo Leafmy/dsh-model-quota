@@ -2,6 +2,17 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与语义化版本。
 
+## [Unreleased]
+
+### 变更
+
+- **兼容性复核**：确认与 **DSH 0.2.1-rc.1** 兼容（宿主路由 / DeepSeek Account 余额 / 侧栏卡片与
+  设置页槽位全链路实测；0.2.0-rc.2 为 1.0.0 的验证基线）。README 新增「兼容性」章节列出目标版本、
+  实测证据与依赖的宿主/客户端缝。
+- `accountClientVersion` 的兜底值随运行时口径由 `0.2.0-rc.2` 刷新为 `0.2.1-rc.1`
+  （`config.accountClientVersion` 与环境变量 `DSH_CLIENT_VERSION` / `DSH_VERSION` 仍然优先）。
+  该项只是发给 DeepSeek Platform 的 `x-client-version` 身份串，不影响取值。
+
 ## [1.0.0] — 2026-10-16
 
 首个公开发布。
